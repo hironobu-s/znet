@@ -2,11 +2,9 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
-
-	"encoding/json"
-
 	"strings"
 
 	"github.com/hironobu-s/conoha-net/conoha"
