@@ -143,7 +143,7 @@ func (v *Vps) AllIpAddresses(version string) []string {
 				addresses = append(addresses, ip.IPAddress)
 			} else if version == "ipv6" && strings.Index(ip.IPAddress, ":") >= 0 {
 				addresses = append(addresses, ip.IPAddress)
-			} else if version == "ipv4" {
+			} else if version == "ipv4" && strings.Index(ip.IPAddress, ":") < 0 {
 				addresses = append(addresses, ip.IPAddress)
 			}
 
