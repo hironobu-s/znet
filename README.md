@@ -6,6 +6,8 @@ Z.com cloudには仮想サーバーが繋がっている仮想スイッチ側に
 
 [OpenStackのコマンドラインツール](http://docs.openstack.org/cli-reference/)でも同じことができますが、機能を絞っている分```znet```の方が簡単に使えると思います。
 
+**Note:** このツールは[hironobu-s/conoha-net](https://github.com/hironobu-s/conoha-net)をforkして作成されています。
+
 ## できること
 
 * 通信方向(Ingress / Egress)
@@ -38,7 +40,7 @@ curl -sL https://github.com/hironobu-s/znet/releases/download/current/znet-linux
 
 ## デフォルトルールについて
 
-Z.com cloudにはデフォルトで下記のセキュリティグループが用意されていて変更/削除不可です。VPSへのアタッチ/デタッチは自由にできます。また**default**はアタッチしないと全ての通信が通らなくなるので、事実上必須となります。
+Z.com cloudにはデフォルトで下記のセキュリティグループが用意されていて変更/削除不可です。仮想サーバーへのアタッチ/デタッチは自由にできます。また**default**はアタッチしないと全ての通信が通らなくなるので、事実上必須となります。
 
 ### Z.com cloud
 * default
@@ -118,22 +120,20 @@ UUID                                     SecurityGroup     Direction     EtherTy
 83e287b1-1bcd-425c-b162-8b2d5e008ddf     my-group          ingress       IPv4          tcp       133.130.0.0/16     22 - 22
 ```
 
-### 3. VPS(仮想サーバー)にアタッチする
+### 3. 仮想サーバーにアタッチする
 
-作成したセキュリティグループを一つ、もしくは複数のVPSにアタッチすることで、そのVPSに対してフィルタリングが有効になります。これにはattachを使います。一つ目の引数にセキュリティグループをアタッチするIPアドレスを指定します。
+作成したセキュリティグループを一つ、もしくは複数の仮想サーバーにアタッチすることでフィルタリングが有効になります。これにはattachを使います。一つ目の引数にセキュリティグループをアタッチするIPアドレスを指定します。二つ目の引数は作成したセキュリティグループ名です。
 
 ```shell
 znet attach [IP Address] my-group
 ```
 
--n はVPSを名前で指定します。他に-i(IPアドレスで指定), --id(UUIDで指定)も利用可能です。最後の引数は作成したセキュリティグループ名です。
-
-listを実行すると、VPSにセキュリティグループがアタッチされたことを確認できます。
+その後listを実行すると、セキュリティグループがアタッチされたことを確認できます。
 
 ```
 # znet list
-NameTag          IPv4               IPv6                                  SecGroup
-Hironobu-test    163.44.***.***     2400:8500:1302:810:163:44:***:***     default, my-group
+NameTag          IPv4               IPv6      SecGroup
+znet-test        163.44.***.***               default, my-group
 ```
 
 ## コマンド一覧
@@ -166,6 +166,10 @@ GLOBAL OPTIONS:
 --help, -h     show help
 --version, -v  print the version
 ```
+
+## サポート
+
+このツールはオフィシャルなツールではありません。Z.com cloudのサポートへのお問い合わせはご遠慮ください。
 
 ## ライセンス
 
