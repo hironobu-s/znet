@@ -41,9 +41,11 @@ func (v *Vps) FromServer(s servers.Server) error {
 	}
 
 	for name, a := range s.Addresses {
-		if !strings.HasPrefix(name, "ext-") {
+		if !strings.HasPrefix(name, "ext-") && // ConoHa
+			!strings.HasPrefix(name, "p-global") { // Z.com shared global
 			continue
 		}
+
 		addrs := a.([]interface{})
 		for _, iaddr := range addrs {
 			addr, ok := iaddr.(map[string]interface{})
@@ -141,9 +143,9 @@ func (v *Vps) PopulatePorts(os *OpenStack) error {
 				hasv6 = true
 			}
 		}
+
 		if hasv4 && hasv6 {
 			v.ExternalPort = p
-
 			for _, fip := range p.FixedIPs {
 				ip := net.ParseIP(fip.IPAddress)
 				if ip.To4() != nil {

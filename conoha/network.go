@@ -12,11 +12,18 @@ import (
 	"github.com/rackspace/gophercloud/openstack/networking/v2/ports"
 )
 
-// Specity the system created security groups and prefix
-const (
-	SYSTEM_SECGROUP_DEFAULT = "default"
-	SYSTEM_SECGROUP_PREFIX  = "gncs"
-)
+// Specity the system created security groups
+var SystemSecGroupPrefixes = []string{
+	// ConoHa default rules
+	"default",
+	"gncs",
+
+	// Z.com cloud default rules
+	"zcom-net",
+	"n-default",
+	"l-default",
+	"zjps-",
+}
 
 type RuleCreateOpts struct {
 	SecurityGroupName string
@@ -158,7 +165,14 @@ func GetGroup(os *OpenStack, name string) (*groups.SecGroup, error) {
 func RemoveSystemGroups(allgroups []groups.SecGroup) []groups.SecGroup {
 	ugs := make([]groups.SecGroup, 0, len(allgroups))
 	for _, g := range allgroups {
-		if g.Name != SYSTEM_SECGROUP_DEFAULT && !strings.HasPrefix(g.Name, SYSTEM_SECGROUP_PREFIX) {
+		match := false
+		for _, p := range SystemSecGroupPrefixes {
+			if strings.HasPrefix(g.Name, p) {
+				match = true
+				break
+			}
+		}
+		if !match {
 			ugs = append(ugs, g)
 		}
 	}
