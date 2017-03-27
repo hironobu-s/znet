@@ -76,7 +76,7 @@ export OS_REGION_NAME=[region]
 create-groupで**my-group**と言う名前のセキュリティグループを作成します。
 
 ```
-conoha-net create-group conoha-net
+conoha-net create-group my-group
 ```
 
 list-groupを実行すると、今作ったセキュリティグループが表示されます。
