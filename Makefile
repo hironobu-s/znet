@@ -1,4 +1,4 @@
-NAME=conoha-net
+NAME=znet
 BINDIR=bin
 GOARCH=amd64
 GOFLAGS=-ldflags '-s -w'
@@ -21,4 +21,4 @@ clean:
 	rm -rf $(BINDIR)/*
 
 test:
-	go test -v github.com/hironobu-s/conoha-net/...
+	go test -v github.com/hironobu-s/znet/...
