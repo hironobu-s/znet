@@ -1,4 +1,4 @@
-package conoha
+package znet
 
 import (
 	"fmt"
@@ -207,7 +207,7 @@ func DeleteGroup(os *OpenStack, name string) error {
 //
 // As for fixedIps or allowedAddressPairs,
 // if those arguments are nil, current settings will be retained (will not be sent to API).
-func Attach(os *OpenStack, vps *Vps, groupName string, fixedIps []string, allowedAddressPairs []string) (attached *groups.SecGroup, err error) {
+func Attach(os *OpenStack, vps *Vps, ipaddr string, groupName string, fixedIps []string, allowedAddressPairs []string) (attached *groups.SecGroup, err error) {
 	sgs, err := ListGroup(os)
 	if err != nil {
 		return nil, err
@@ -244,7 +244,12 @@ func Attach(os *OpenStack, vps *Vps, groupName string, fixedIps []string, allowe
 		}
 	}
 
-	_, err = ports.Update(os.Network, vps.ExternalPort.PortId, opts).Extract()
+	port := vps.GetPort(ipaddr)
+	if port == nil {
+		return nil, fmt.Errorf("Port not found. [%s]", ipaddr)
+	}
+
+	_, err = ports.Update(os.Network, port.PortId, opts).Extract()
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +258,7 @@ func Attach(os *OpenStack, vps *Vps, groupName string, fixedIps []string, allowe
 }
 
 // Detach security group from VPS and return detached security group.
-func Detach(os *OpenStack, vps *Vps, groupName string) (detached *secgroups.SecurityGroup, err error) {
+func Detach(os *OpenStack, vps *Vps, ipaddr string, groupName string) (detached *secgroups.SecurityGroup, err error) {
 	secGroupIds := make([]string, 0, len(vps.SecurityGroups))
 	for _, sg := range vps.SecurityGroups {
 		if sg.Name == groupName || sg.ID == groupName {
@@ -267,10 +272,15 @@ func Detach(os *OpenStack, vps *Vps, groupName string) (detached *secgroups.Secu
 		return nil, fmt.Errorf("Security group not found. [%s]", groupName)
 	}
 
+	port := vps.GetPort(ipaddr)
+	if port == nil {
+		return nil, fmt.Errorf("Port not found. [%s]", ipaddr)
+	}
+
 	opts := ports.UpdateOpts{
 		SecurityGroups: secGroupIds,
 	}
-	_, err = ports.Update(os.Network, vps.ExternalPort.PortId, opts).Extract()
+	_, err = ports.Update(os.Network, port.PortId, opts).Extract()
 	if err != nil {
 		return nil, err
 	}

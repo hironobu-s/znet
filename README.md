@@ -1,10 +1,10 @@
-# ConoHa Net
+# Z.com cloud serucity group manager
 
-[ConoHa](https://www.conoha.jp/)のセキュリティグループを管理するためのツールです。
+[Z.com cloud](https://cloud.z.com/)のセキュリティグループを管理するためのツールです。
 
-ConoHaには仮想マシン(VPS)が繋がっている仮想スイッチ側にパケットフィルタが備わっています。VPS上のOSのファイアーウォール機能(iptables, firewalld)に影響されずに利用できるので便利ですが、[API](https://www.conoha.jp/docs/)でしか操作することができません。このツールはそれらをコマンドラインで操作できるようにするものです。
+Z.com cloudには仮想サーバーが繋がっている仮想スイッチ側にパケットフィルタが備わっています。サーバー上のOSのファイアーウォール機能(iptables, firewalld)に影響されずに利用できるので便利ですが、[API](https://cloud.z.com/jp/guide/identity-get_version_list/)でしか操作することができません。このツールはそれらをコマンドラインで操作できるようにするものです。
 
-[OpenStackのコマンドラインツール](http://docs.openstack.org/cli-reference/)でも同じことができますが、機能を絞っている分```conoha-net```の方が簡単に使えると思います。
+[OpenStackのコマンドラインツール](http://docs.openstack.org/cli-reference/)でも同じことができますが、機能を絞っている分```znet```の方が簡単に使えると思います。
 
 ## できること
 
@@ -22,31 +22,31 @@ ConoHaには仮想マシン(VPS)が繋がっている仮想スイッチ側にパ
 **Mac OSX**
 
 ```shell
-curl -sL https://github.com/hironobu-s/conoha-net/releases/download/current/conoha-net-osx.amd64.gz | zcat > conoha-net && chmod +x ./conoha-net
+curl -sL https://github.com/hironobu-s/znet/releases/download/current/znet-osx.amd64.gz | zcat > znet && chmod +x ./znet
 ```
 
 
 **Linux(amd64)**
 
 ```bash
-curl -sL https://github.com/hironobu-s/conoha-net/releases/download/current/conoha-net-linux.amd64.gz | zcat > conoha-net && chmod +x ./conoha-net
+curl -sL https://github.com/hironobu-s/znet/releases/download/current/znet-linux.amd64.gz | zcat > znet && chmod +x ./znet
 ```
 
 **Windows(amd64)**
 
-[ZIP file](https://github.com/hironobu-s/conoha-net/releases/download/current/conoha-net.amd64.zip)
+[ZIP file](https://github.com/hironobu-s/znet/releases/download/current/znet.amd64.zip)
 
 ## デフォルトルールについて
 
-ConoHaにはデフォルトで下記のセキュリティグループが用意されていて変更/削除不可です。VPSへのアタッチ/デタッチは自由にできます。また**default**はアタッチしないと全ての通信が通らなくなるので、事実上必須となります。
+Z.com cloudにはデフォルトで下記のセキュリティグループが用意されていて変更/削除不可です。VPSへのアタッチ/デタッチは自由にできます。また**default**はアタッチしないと全ての通信が通らなくなるので、事実上必須となります。
 
+### Z.com cloud
 * default
-* gncs-ipv4-all
-* gncs-ipv4-ssh
-* gncs-ipv4-web
-* gncs-ipv6-all
+* l-default
+* n-default
+* zjps-ipv4-*
 
-conoha-netのセキュリティグループを一覧表示するコマンドlist-groupは、デフォルトで**これらを表示しません**。--allオプションを明示的に指定する必要があります。
+znetのセキュリティグループを一覧表示するコマンドlist-groupは、デフォルトで**これらを表示しません**。--allオプションを明示的に指定する必要があります。
 
 ## 使い方
 
@@ -54,9 +54,9 @@ conoha-netのセキュリティグループを一覧表示するコマンドlist
 
 ### 1. 認証
 
-conoha-netを実行するには、APIの認証情報を環境変数にセットする必要があります。
+znetを実行するには、APIの認証情報を環境変数にセットする必要があります。
 
-I認証情報は「APIユーザ名」「APIパスワード」「テナント名 or テナントID」です。これらの情報は[ConoHaのコントロールパネル](https://manage.conoha.jp/API/)にあります。
+認証情報は「APIユーザ名」「APIパスワード」「テナント名 or テナントID」です。これらの情報は[Z.com cloudのコントロールパネル](https://cp-jp.cloud.z.com/EP/API/)にあります。
 
 以下はbashの例です。
 
@@ -76,13 +76,13 @@ export OS_REGION_NAME=[region]
 create-groupで**my-group**と言う名前のセキュリティグループを作成します。
 
 ```
-conoha-net create-group my-group
+znet create-group my-group
 ```
 
 list-groupを実行すると、今作ったセキュリティグループが表示されます。
 
 ```
-# conoha-net list-group
+# znet list-group
 UUID                                     SecurityGroup     Direction     EtherType     Proto     IP Range     Port
 05bb817c-5179-4156-99ec-f088ff5c5d8e     my-group          egress        IPv6          ALL                    ALL
 5ecc4a23-0b92-4394-bca6-2466f08ef45e     my-group          egress        IPv4          ALL                    ALL
@@ -106,7 +106,7 @@ OPTIONS:
 たとえば、133.130.0.0/16のIPレンジからのTCP 22番ポートへのインバウンド通信(ingress)を許可する場合は以下のように設定します。(-dオプションと-eオプションはデフォルト値があるので省略可能です)
 
 ```
-conoha-net create-rule -d ingress -e IPv4 -p 22 -P tcp -i 133.130.0.0/16 my-group
+znet create-rule -d ingress -e IPv4 -p 22 -P tcp -i 133.130.0.0/16 my-group
 ```
 
 再度list-groupを実行すると、ルールが追加されていることが確認できます。
@@ -118,12 +118,12 @@ UUID                                     SecurityGroup     Direction     EtherTy
 83e287b1-1bcd-425c-b162-8b2d5e008ddf     my-group          ingress       IPv4          tcp       133.130.0.0/16     22 - 22
 ```
 
-### 3. VPSにアタッチする
+### 3. VPS(仮想サーバー)にアタッチする
 
-作成したセキュリティグループを一つ、もしくは複数のVPSにアタッチすることで、そのVPSに対してフィルタリングが有効になります。これにはattachを使います。
+作成したセキュリティグループを一つ、もしくは複数のVPSにアタッチすることで、そのVPSに対してフィルタリングが有効になります。これにはattachを使います。一つ目の引数にセキュリティグループをアタッチするIPアドレスを指定します。
 
 ```shell
-conoha-net attach -n [VPS名] my-group
+znet attach [IP Address] my-group
 ```
 
 -n はVPSを名前で指定します。他に-i(IPアドレスで指定), --id(UUIDで指定)も利用可能です。最後の引数は作成したセキュリティグループ名です。
@@ -131,7 +131,7 @@ conoha-net attach -n [VPS名] my-group
 listを実行すると、VPSにセキュリティグループがアタッチされたことを確認できます。
 
 ```
-# conoha-net list
+# znet list
 NameTag          IPv4               IPv6                                  SecGroup
 Hironobu-test    163.44.***.***     2400:8500:1302:810:163:44:***:***     default, my-group
 ```
@@ -142,7 +142,7 @@ Hironobu-test    163.44.***.***     2400:8500:1302:810:163:44:***:***     defaul
 
 ```shell
 NAME:
-ConoHa Net - Security group management tool for ConoHa
+Z.com cloud security group manager
 
 USAGE:
 commands [global options] command [command options] [arguments...]

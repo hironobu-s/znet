@@ -1,8 +1,7 @@
-package conoha
+package znet
 
 import (
 	"fmt"
-	"net"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -13,13 +12,13 @@ import (
 )
 
 type Vps struct {
-	ID                  string
-	NameTag             string
-	ExternalIPv4Address net.IP
-	ExternalIPv6Address net.IP
-	ExternalPort        AttachedPort
-	Ports               []AttachedPort
-	SecurityGroups      []secgroups.SecurityGroup
+	ID      string
+	NameTag string
+	// ExternalIPv4Address net.IP
+	// ExternalIPv6Address net.IP
+	// ExternalPort        AttachedPort
+	Ports          []AttachedPort
+	SecurityGroups []secgroups.SecurityGroup
 }
 
 type AttachedPort struct {
@@ -46,6 +45,7 @@ func (v *Vps) FromServer(s servers.Server) error {
 			continue
 		}
 
+		fixedIps := make([]ports.IP, 0, len(s.Addresses))
 		addrs := a.([]interface{})
 		for _, iaddr := range addrs {
 			addr, ok := iaddr.(map[string]interface{})
@@ -53,21 +53,22 @@ func (v *Vps) FromServer(s servers.Server) error {
 				return fmt.Errorf("Can't convert to map[string]interface{}. [%v]", iaddr)
 			}
 
-			version, ok := addr["version"]
-			if !ok {
-				return fmt.Errorf(`Not has "version" field. [%v]`, addr)
-			}
+			// version, ok := addr["version"]
+			// if !ok {
+			// 	return fmt.Errorf(`Not has "version" field. [%v]`, addr)
+			// }
 
-			straddr, ok := addr["addr"]
+			straddr, ok := addr["addr"].(string)
 			if !ok {
 				return fmt.Errorf(`Not has "addr" field. [%v]`, addr)
 			}
-			if version == 4.0 {
-				v.ExternalIPv4Address = net.ParseIP(straddr.(string))
-			} else if version == 6.0 {
-				v.ExternalIPv6Address = net.ParseIP(straddr.(string))
-			}
+			fixedIps = append(fixedIps, ports.IP{IPAddress: straddr})
 		}
+
+		port := AttachedPort{
+			FixedIPs: fixedIps,
+		}
+		v.Ports = append(v.Ports, port)
 	}
 
 	return nil
@@ -116,57 +117,52 @@ func (v *Vps) PopulatePorts(os *OpenStack) error {
 	}
 	v.Ports = resp.Ports
 
-	// Try to detect port that connect to global network.
-	// In ConoHa, port that has IPv4 and Ipv6 addresses is it.
-
-	_, p1, _ := net.ParseCIDR("10.0.0.0/8") // Private networks
-	_, p2, _ := net.ParseCIDR("172.16.0.0/12")
-	_, p3, _ := net.ParseCIDR("192.168.0.0/16")
-
-	for _, p := range v.Ports {
-		if p.PortState != "ACTIVE" {
-			continue
-		}
-
-		var hasv4, hasv6 bool
-		for _, fip := range p.FixedIPs {
-			ip := net.ParseIP(fip.IPAddress)
-
-			// Skip private address
-			if p1.Contains(ip) || p2.Contains(ip) || p3.Contains(ip) {
-				continue
-			}
-
-			if ip.To4() != nil {
-				hasv4 = true
-			} else {
-				hasv6 = true
-			}
-		}
-
-		if hasv4 && hasv6 {
-			v.ExternalPort = p
-			for _, fip := range p.FixedIPs {
-				ip := net.ParseIP(fip.IPAddress)
-				if ip.To4() != nil {
-					v.ExternalIPv4Address = ip
-				}
-			}
-		}
-	}
-
 	return nil
 }
 
+func (v *Vps) GetPort(queryIp string) *AttachedPort {
+	for _, p := range v.Ports {
+		for _, ip := range p.FixedIPs {
+			if queryIp == ip.IPAddress {
+				return &p
+			}
+		}
+	}
+	return nil
+}
+func (v *Vps) HasIpAddress(queryIp string) bool {
+	return v.GetPort(queryIp) != nil
+}
+
+// "version" argument is one of "all", "ipv4" and "ipv6
+func (v *Vps) AllIpAddresses(version string) []string {
+	addresses := make([]string, 0, 10)
+	for _, p := range v.Ports {
+		for _, ip := range p.FixedIPs {
+			if version == "all" {
+				addresses = append(addresses, ip.IPAddress)
+			} else if version == "ipv6" && strings.Index(ip.IPAddress, ":") >= 0 {
+				addresses = append(addresses, ip.IPAddress)
+			} else if version == "ipv4" {
+				addresses = append(addresses, ip.IPAddress)
+			}
+
+		}
+	}
+	return addresses
+}
+
 func (v *Vps) String() string {
-	return fmt.Sprintf("%s %s %s", v.ID, v.NameTag, v.ExternalPort.FixedIPs[0].IPAddress)
+	return fmt.Sprintf("%s %s %s", v.ID, v.NameTag, strings.Join(v.AllIpAddresses("all"), ","))
 }
 
 func GetVps(os *OpenStack, query string) (*Vps, error) {
 	query = strings.ToLower(query)
 
 	condition := func(vps Vps) bool {
-		if strings.ToLower(vps.ID) == query || strings.ToLower(vps.NameTag) == query {
+		if strings.ToLower(vps.ID) == query ||
+			strings.ToLower(vps.NameTag) == query ||
+			vps.HasIpAddress(query) {
 			return true
 		}
 		return false

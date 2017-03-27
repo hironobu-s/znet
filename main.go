@@ -17,9 +17,9 @@ func main() {
 
 func run() error {
 	app := cli.NewApp()
-	app.Name = "ConoHa Net"
-	app.Usage = "Security group management tool for ConoHa"
-	app.Version = "0.1"
+	app.Name = "ZNet"
+	app.Usage = "Z.com cloud security group manager "
+	app.Version = "0.2"
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
 			Name:  "debug,d",

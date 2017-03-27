@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hironobu-s/conoha-net/conoha"
+	"github.com/hironobu-s/conoha-net/znet"
 	"github.com/urfave/cli"
 )
 
@@ -41,10 +41,10 @@ var commands = []cli.Command{
 		Name:    "attach",
 		Aliases: []string{},
 		Usage:   "attach a security group to VPS",
-		Flags: append(queryVpsFlags,
+		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "secgroup, s",
-				Usage: "Security group name",
+				Name:   "ip, i",
+				Hidden: true,
 			},
 			cli.StringFlag{
 				Name:   "fixed-ips, f",
@@ -54,8 +54,8 @@ var commands = []cli.Command{
 				Name:   "allowed-address-pairs, p",
 				Hidden: true,
 			},
-		),
-		ArgsUsage: "security-group-name",
+		},
+		ArgsUsage: "IP-addres security-group-name",
 		Action:    runCmd,
 	},
 
@@ -158,7 +158,7 @@ var commands = []cli.Command{
 	},
 }
 
-var openstack *conoha.OpenStack
+var openstack *znet.OpenStack
 
 func runCmd(c *cli.Context) (err error) {
 	// Run
@@ -188,7 +188,7 @@ func runCmd(c *cli.Context) (err error) {
 	return err
 }
 
-func queryVps(c *cli.Context) (*conoha.Vps, error) {
+func queryVps(c *cli.Context) (*znet.Vps, error) {
 	var query string
 	query = c.String("name")
 	if query == "" {
@@ -201,7 +201,7 @@ func queryVps(c *cli.Context) (*conoha.Vps, error) {
 		return nil, fmt.Errorf("%s", `Choose at least one of "name", "ip" or "id" option to detect VPS.`)
 	}
 
-	vps, err := conoha.GetVps(openstack, query)
+	vps, err := znet.GetVps(openstack, query)
 	if err != nil {
 		return nil, err
 	} else if vps == nil {
@@ -212,7 +212,7 @@ func queryVps(c *cli.Context) (*conoha.Vps, error) {
 }
 
 func cmdCreateRule(c *cli.Context) (err error) {
-	openstack, err = conoha.NewOpenStack()
+	openstack, err = znet.NewOpenStack()
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func cmdCreateRule(c *cli.Context) (err error) {
 	} else {
 		name = ""
 	}
-	rule := conoha.RuleCreateOpts{
+	rule := znet.RuleCreateOpts{
 		SecurityGroupName: name,
 		Direction:         c.String("direction"),
 		EtherType:         c.String("ether-type"),
@@ -233,7 +233,7 @@ func cmdCreateRule(c *cli.Context) (err error) {
 		RemoteIPPrefix:    c.String("remote-ip-prefix"),
 	}
 
-	rt, err := conoha.CreateRule(openstack, rule)
+	rt, err := znet.CreateRule(openstack, rule)
 	if err != nil {
 		return err
 	}
@@ -243,12 +243,10 @@ func cmdCreateRule(c *cli.Context) (err error) {
 	} else {
 		return outputTable([][]string{[]string{rt.ID}})
 	}
-
-	return nil
 }
 
 func cmdDeleteRule(c *cli.Context) (err error) {
-	openstack, err = conoha.NewOpenStack()
+	openstack, err = znet.NewOpenStack()
 	if err != nil {
 		return err
 	}
@@ -260,21 +258,21 @@ func cmdDeleteRule(c *cli.Context) (err error) {
 	}
 	uuid := c.Args()[0]
 
-	return conoha.DeleteRule(openstack, uuid)
+	return znet.DeleteRule(openstack, uuid)
 }
 
 func cmdListGroup(c *cli.Context) (err error) {
-	openstack, err = conoha.NewOpenStack()
+	openstack, err = znet.NewOpenStack()
 	if err != nil {
 		return err
 	}
 
-	groups, err := conoha.ListGroup(openstack)
+	groups, err := znet.ListGroup(openstack)
 	if err != nil {
 		return err
 	}
 	if !c.Bool("all") {
-		groups = conoha.RemoveSystemGroups(groups)
+		groups = znet.RemoveSystemGroups(groups)
 	}
 
 	// Display
@@ -336,7 +334,7 @@ func cmdListGroup(c *cli.Context) (err error) {
 }
 
 func cmdCreateGroup(c *cli.Context) (err error) {
-	openstack, err = conoha.NewOpenStack()
+	openstack, err = znet.NewOpenStack()
 	if err != nil {
 		return err
 	}
@@ -351,7 +349,7 @@ func cmdCreateGroup(c *cli.Context) (err error) {
 	}
 	name := c.Args()[0]
 
-	created, err := conoha.CreateGroup(openstack, name, description)
+	created, err := znet.CreateGroup(openstack, name, description)
 	if err != nil {
 		return err
 	}
@@ -364,7 +362,7 @@ func cmdCreateGroup(c *cli.Context) (err error) {
 }
 
 func cmdDeleteGroup(c *cli.Context) (err error) {
-	openstack, err = conoha.NewOpenStack()
+	openstack, err = znet.NewOpenStack()
 	if err != nil {
 		return err
 	}
@@ -376,16 +374,16 @@ func cmdDeleteGroup(c *cli.Context) (err error) {
 	}
 	name := c.Args()[0]
 
-	return conoha.DeleteGroup(openstack, name)
+	return znet.DeleteGroup(openstack, name)
 }
 
 func cmdList(c *cli.Context) (err error) {
-	openstack, err = conoha.NewOpenStack()
+	openstack, err = znet.NewOpenStack()
 	if err != nil {
 		return err
 	}
 
-	vpss, err := conoha.ListVps(openstack, nil)
+	vpss, err := znet.ListVps(openstack, nil)
 	if err != nil {
 		return err
 	}
@@ -410,15 +408,15 @@ func cmdList(c *cli.Context) (err error) {
 
 		data = append(data, []string{
 			vps.NameTag,
-			vps.ExternalIPv4Address.String(),
-			vps.ExternalIPv6Address.String(),
+			strings.Join(vps.AllIpAddresses("ipv4"), ","),
+			strings.Join(vps.AllIpAddresses("ipv6"), ","),
 			buf.String(),
 		})
 
 		jsondata = append(jsondata, map[string]interface{}{
 			"name-tag":        vps.NameTag,
-			"ipv4":            vps.ExternalIPv4Address.String(),
-			"ipv6":            vps.ExternalIPv6Address.String(),
+			"ipv4":            vps.AllIpAddresses("ipv4"),
+			"ipv6":            vps.AllIpAddresses("ipv6"),
 			"security-groups": sgs,
 		})
 	}
@@ -431,23 +429,25 @@ func cmdList(c *cli.Context) (err error) {
 }
 
 func cmdAttachOrDetach(c *cli.Context, mode string) (err error) {
-	var vps *conoha.Vps
-	var secGroup string
+	var vps *znet.Vps
+	var secGroup, ipaddr string
 
 	// security group name to attach or detach
-	if c.NArg() == 0 {
-		err = fmt.Errorf("Please specify the security group name")
+	if c.NArg() != 2 {
+		err = fmt.Errorf("Please specify IP address of VPS and your security group name ")
 		goto ON_ERROR
 	}
-	secGroup = c.Args()[0]
+	ipaddr = c.Args()[0]
+	secGroup = c.Args()[1]
 
 	// initialize openstack
-	openstack, err = conoha.NewOpenStack()
+	openstack, err = znet.NewOpenStack()
 	if err != nil {
 		goto ON_ERROR
 	}
 
 	// detect vps to attach or detach
+	c.Set("ip", ipaddr)
 	vps, err = queryVps(c)
 	if err != nil {
 		goto ON_ERROR
@@ -478,7 +478,7 @@ func cmdAttachOrDetach(c *cli.Context, mode string) (err error) {
 			allowedAddressPairs = strings.Split(c.String("allowed-address-pairs"), ",")
 		}
 
-		attached, err := conoha.Attach(openstack, vps, secGroup, fixedIps, allowedAddressPairs)
+		attached, err := znet.Attach(openstack, vps, ipaddr, secGroup, fixedIps, allowedAddressPairs)
 		if err != nil {
 			goto ON_ERROR
 		}
@@ -490,7 +490,7 @@ func cmdAttachOrDetach(c *cli.Context, mode string) (err error) {
 		}
 
 	} else {
-		detached, err := conoha.Detach(openstack, vps, secGroup)
+		detached, err := znet.Detach(openstack, vps, ipaddr, secGroup)
 		if err != nil {
 			goto ON_ERROR
 		}

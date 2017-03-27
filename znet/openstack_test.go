@@ -1,4 +1,4 @@
-package conoha
+package znet
 
 import (
 	"testing"

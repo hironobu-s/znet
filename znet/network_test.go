@@ -1,4 +1,4 @@
-package conoha
+package znet
 
 import "github.com/mitchellh/mapstructure"
 import "testing"
